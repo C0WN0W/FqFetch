@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -25,7 +24,6 @@ import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.textfield.TextInputEditText;
 
-import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -45,7 +43,6 @@ public final class MainActivity extends Activity {
     private TextView tvParallel;
     private TextView tvWave;
     private TextView tvAlpha;
-    private TextView tvDiag;
 
     private Slider sliderBatch;
     private Slider sliderParallel;
@@ -88,7 +85,6 @@ public final class MainActivity extends Activity {
         snap = Prefs.readLocal(this);
         render();
         bindListeners();
-        renderDiagnostics();
 
         L.i("设置页打开 " + getPackageName());
     }
@@ -130,8 +126,6 @@ public final class MainActivity extends Activity {
         swStripTitle = findViewById(R.id.sw_strip_title);
         swHtmlPlain = findViewById(R.id.sw_html_plain);
         swFileLog = findViewById(R.id.sw_file_log);
-
-        tvDiag = findViewById(R.id.tv_diag);
     }
 
     private void bindInfo() {
@@ -143,86 +137,12 @@ public final class MainActivity extends Activity {
         paths.setText("自动探测顺序（取第一个可写目录）：\n" + Cfg.describeCandidates());
     }
 
-    // ---------------- 环境自检 ----------------
-
-    private void renderDiagnostics() {
-        if (tvDiag == null) {
-            return;
-        }
-        StringBuilder sb = new StringBuilder();
-        sb.append("Android ").append(Build.VERSION.RELEASE)
-                .append("  API ").append(Build.VERSION.SDK_INT).append('\n');
-        sb.append("ABI ").append(Build.SUPPORTED_ABIS.length > 0 ? Build.SUPPORTED_ABIS[0] : "?")
-                .append("  targetSdk ").append(targetSdk()).append('\n');
-        sb.append("模块 v").append(versionName()).append(" (code ").append(versionCode()).append(")\n");
-        sb.append("根环境: ").append(rootLikely()
-                ? "检测到 su/Magisk（LSPosed 前提满足）"
-                : "未检测到 su/Magisk（LSPosed 无法工作）").append('\n');
-        sb.append("番茄 ").append(Hosts.TARGET_PKG).append(": ")
-                .append(pkgStatus(Hosts.TARGET_PKG)).append('\n');
-        sb.append("LSPosed: ").append(pkgStatus("org.lsposed.manager")).append('\n');
-
-        File prefs = new File(getApplicationInfo().dataDir, "shared_prefs/" + Prefs.NAME + ".xml");
-        sb.append("配置文件: ").append(prefs.isFile()
-                ? (prefs.length() + "B, readable=" + prefs.canRead())
-                : "尚未保存（宿主将用默认值）").append('\n');
-        sb.append("日志: ").append(new File(getFilesDir(), Cfg.DIR_NAME + "/" + Cfg.LOG_NAME).getAbsolutePath())
-                .append("\n  宿主侧实际路径 /sdcard/Android/data/")
-                .append(Hosts.TARGET_PKG).append("/files/").append(Cfg.DIR_NAME).append('/').append('\n');
-
-        sb.append("\n输出计划:\n")
-                .append(TxtOutput.describePlan(this, snap == null ? "" : snap.outDir));
-        sb.append("\n悬浮窗是否注入只能在宿主进程里确认：")
-                .append("logcat 搜 FqFetch，应依次出现「加载 com.dragon.read」「已 Hook ReaderActivity#onResume」「悬浮窗已注入」。");
-        tvDiag.setText(sb.toString());
-    }
-
-    private String pkgStatus(String pkg) {
-        try {
-            PackageInfo pi = getPackageManager().getPackageInfo(pkg, 0);
-            return "已安装 " + pi.versionName + " (" + pi.getLongVersionCode() + ")";
-        } catch (Throwable t) {
-            return "不可见 / 未安装（需 <queries> 或确实没装）";
-        }
-    }
-
-    private static boolean rootLikely() {
-        String[] paths = {"/system/bin/su", "/system/xbin/su", "/sbin/su",
-                "/sbin/magisk", "/debug_ramdisk/magisk", "/data/adb/magisk"};
-        for (String p : paths) {
-            try {
-                if (new File(p).exists()) {
-                    return true;
-                }
-            } catch (Throwable ignored) {
-                // ignore
-            }
-        }
-        return false;
-    }
-
     private String versionName() {
         try {
             PackageInfo pi = getPackageManager().getPackageInfo(getPackageName(), 0);
             return pi.versionName == null ? "?" : pi.versionName;
         } catch (Throwable t) {
             return "?";
-        }
-    }
-
-    private long versionCode() {
-        try {
-            return getPackageManager().getPackageInfo(getPackageName(), 0).getLongVersionCode();
-        } catch (Throwable t) {
-            return -1;
-        }
-    }
-
-    private int targetSdk() {
-        try {
-            return getApplicationInfo().targetSdkVersion;
-        } catch (Throwable t) {
-            return -1;
         }
     }
 
@@ -340,15 +260,6 @@ public final class MainActivity extends Activity {
 
         MaterialButton lsposed = findViewById(R.id.btn_lsposed);
         lsposed.setOnClickListener(v -> openLsposed());
-
-        MaterialButton diag = findViewById(R.id.btn_diag);
-        if (diag != null) {
-            diag.setOnClickListener(v -> {
-                save();
-                renderDiagnostics();
-                toast("已重新检测");
-            });
-        }
     }
 
     private void scheduleSave() {

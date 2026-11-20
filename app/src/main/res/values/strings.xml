@@ -3,9 +3,6 @@
     <string name="module_subtitle">LSPosed 模块 · 番茄整本导出</string>
 
     <string name="section_status">状态</string>
-    <string name="section_diag">环境自检</string>
-    <string name="action_diag">重新检测</string>
-    <string name="hint_diag">自检只读：查 Android 版本、番茄/LSPosed 是否可见、根环境、配置与输出目录。宿主进程里的 hook 是否生效，看 logcat 的 FqFetch 行。</string>
     <string name="section_download">下载</string>
     <string name="section_output">输出</string>
     <string name="section_body">正文</string>
