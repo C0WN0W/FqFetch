@@ -1,0 +1,6 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Material 3 Expressive，DayNight + 动态取色（Android 12+ 生效，低版本回落静态 M3 调色板） -->
+    <style name="Theme.FqFetch" parent="Theme.Material3Expressive.DayNight.NoActionBar">
+        <item name="android:windowBackground">?attr/colorSurface</item>
+    </style>
+</resources>

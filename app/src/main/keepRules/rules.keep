@@ -1,0 +1,8 @@
+# FqFetch —— LSPosed 模块
+# entry class 由框架按 xposed_init / META-INF/xposed/java_init.list 直接反射加载，
+# 类名与类结构都不能被裁剪或改名。
+-keep class com.cownow.fqfetch.HookEntry { *; }
+-keep class com.cownow.fqfetch.** { *; }
+-keepattributes *Annotation*, InnerClasses, EnclosingMethod, Signature
+-dontwarn de.robv.android.xposed.**
+-dontwarn io.reactivex.**

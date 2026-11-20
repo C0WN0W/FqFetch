@@ -1,0 +1,29 @@
+<resources>
+    <string name="app_name">FqFetch</string>
+    <string name="module_subtitle">LSPosed 模块 · 番茄整本导出</string>
+
+    <string name="section_status">状态</string>
+    <string name="section_download">下载</string>
+    <string name="section_output">输出</string>
+    <string name="section_body">正文</string>
+    <string name="section_misc">调试与外观</string>
+
+    <string name="label_batch">每批章节数</string>
+    <string name="label_parallel">并发批次数</string>
+    <string name="label_wave">每波章节数</string>
+    <string name="label_name_author">文件名追加「作者」</string>
+    <string name="label_strip_title">去掉重复的章节标题</string>
+    <string name="label_html_plain">正文 HTML 转纯文本</string>
+    <string name="label_file_log">写调试日志文件</string>
+    <string name="label_alpha">悬浮窗不透明度</string>
+    <string name="hint_float">单击导出 · 拖动移动（吸附边缘并记住位置）· 长按隐藏</string>
+
+    <string name="hint_out_dir">自定义输出目录</string>
+    <string name="helper_out_dir">留空则自动探测：Download → 宿主外部私有 → 宿主内部 → /data/local/tmp</string>
+
+    <string name="action_reset">恢复默认</string>
+    <string name="action_open_lsposed">打开 LSPosed</string>
+    <string name="status_saved">已自动保存，宿主下次 onResume / 下载时生效</string>
+    <string name="status_idle">改动会立即写入模块配置</string>
+    <string name="toast_lsposed_missing">未找到 LSPosed 管理器</string>
+</resources>

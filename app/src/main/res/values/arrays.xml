@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- LSPosed 读取：推荐作用域，安装后可一键勾选 -->
+    <string-array name="xposed_scope">
+        <item>com.dragon.read</item>
+    </string-array>
+</resources>
