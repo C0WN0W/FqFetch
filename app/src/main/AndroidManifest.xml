@@ -2,12 +2,24 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!--
+        Android 11+ 的包可见性：不声明 <queries> 时 getPackageInfo()/getLaunchIntentForPackage()
+        对别的包一律抛 NameNotFoundException，自检页会把「番茄已装 / LSPosed 已装」误报成未安装。
+    -->
+    <queries>
+        <package android:name="com.dragon.read" />
+        <package android:name="org.lsposed.manager" />
+        <package android:name="org.meowcat.edxposed.manager" />
+        <package android:name="de.robv.android.xposed.installer" />
+    </queries>
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.FqFetch">
@@ -27,10 +39,14 @@
             android:value="true" />
         <meta-data
             android:name="xposeddescription"
-            android:value="番茄免费小说整本导出 TXT（批量并发解密，阅读页右上角 TXT 按钮）" />
+            android:value="番茄免费小说整本导出 TXT（批量并发解密，阅读页右上角悬浮窗）" />
+        <!--
+            82：只要经典 XposedBridge API，LSPosed 1.7~1.10、EdXposed 都能加载；
+            写 93 会直接把老版本 LSPosed（Android 12 模拟器上常见）挡在门外。
+        -->
         <meta-data
             android:name="xposedminversion"
-            android:value="93" />
+            android:value="82" />
         <meta-data
             android:name="xposedscope"
             android:resource="@array/xposed_scope" />

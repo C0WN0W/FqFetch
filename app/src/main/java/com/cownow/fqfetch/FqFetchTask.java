@@ -4,9 +4,6 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 
 import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -138,24 +135,20 @@ final class FqFetchTask implements Runnable {
         L.file("共 " + total + " 章");
         ReaderUi.setProgress(activity, 0, total);
 
-        // 4) 输出文件：设置项的自定义目录优先
-        File outDir = Cfg.resolveOutDir(cfg.outDir);
+        // 4) 落地目标：自定义目录 → MediaStore(公共下载) → 文件候选
         String baseName = cfg.nameWithAuthor && !author.isEmpty() ? bookName + " - " + author : bookName;
-        File outFile = new File(outDir, D.safeName(baseName) + ".txt");
-        if (outFile.exists() && !outFile.delete()) {
-            L.file("旧文件删除失败: " + outFile.getAbsolutePath());
-        }
-
-        BufferedWriter fw;
+        String fileName = D.safeName(baseName) + ".txt";
+        TxtOutput out;
         try {
-            fw = new BufferedWriter(new OutputStreamWriter(
-                    new FileOutputStream(outFile, false), "UTF-8"));
+            out = TxtOutput.open(activity.getApplicationContext(), cfg.outDir, fileName);
         } catch (Throwable t) {
-            L.file("打开输出文件失败: " + D.err(t) + " path=" + outFile.getAbsolutePath());
+            L.file("打开输出文件失败: " + D.err(t) + " name=" + fileName);
             L.toast("打开输出文件失败: " + D.err(t));
             ReaderUi.setError(activity);
             return;
         }
+        BufferedWriter fw = out.writer();
+        L.file("输出目标: " + out.describe());
 
         boolean interrupted = false;
         try {
@@ -166,7 +159,6 @@ final class FqFetchTask implements Runnable {
             fw.write("共 " + total + " 章\n");
             fw.write("bookId：" + bookId + "\n\n");
             fw.flush();
-            L.file("输出文件: " + outFile.getAbsolutePath());
 
             Hosts host = Hosts.resolve(loader);
             downloadAll(fw, host, items, bookId, total, cfg);
@@ -176,16 +168,12 @@ final class FqFetchTask implements Runnable {
             L.toast("下载中断: " + D.err(t));
             ReaderUi.setError(activity);
         } finally {
-            try {
-                fw.close();
-            } catch (Throwable ignored) {
-                // ignore
-            }
+            out.close();
         }
 
         long cost = System.currentTimeMillis() - t0;
         L.file("完成：成功 " + okCnt + " 失败 " + failCnt + " 总耗时 " + cost
-                + "ms -> " + outFile.getAbsolutePath());
+                + "ms -> " + out.describe());
         if (!interrupted) {
             L.toast("下载完成：成功 " + okCnt + " 失败 " + failCnt + "（" + (cost / 1000) + "s）");
             ReaderUi.setDone(activity, okCnt, failCnt);

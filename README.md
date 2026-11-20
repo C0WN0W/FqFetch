@@ -33,6 +33,10 @@ app/src/test/java/com/cownow/fqfetch/{PortTest,PrefsContractTest,ThreadSafetyCon
 替换原脚本塞进 `decorView` 的 `Button + ProgressBar`：一个 68dp 圆形悬浮窗，内含自绘进度环。
 **不需要悬浮窗权限**（画在宿主 Activity 的 decorView 上），也不依赖宿主主题（纯 `Canvas` + `GradientDrawable`）。
 
+![悬浮窗四态](docs/floating-panel-preview.png)
+
+> 上图由同一套几何/配色参数在 Java2D 里复现（`build/preview/RingPreview.java`），用于校验比例与配色，非设备截图。
+
 | 交互 | 行为 |
 | --- | --- |
 | 单击 | 开始导出；下载中单击只提示「正在下载中」 |
@@ -82,42 +86,51 @@ app/src/test/java/com/cownow/fqfetch/{PortTest,PrefsContractTest,ThreadSafetyCon
 | 生效时机 | — | `handleLoadPackage`（进程启动）、`FqFetchTask.run()`（每次点悬浮窗）、注入悬浮窗时读透明度 |
 | 悬浮窗位置 | 宿主进程自己的 prefs | `FloatPos`（模块进程无法写宿主数据目录） |
 
+### 环境自检（Android 12 排查用）
+
+设置页第二张卡片「环境自检」只读地列出：Android 版本/API/ABI、模块版本与 targetSdk、是否检测到 su/Magisk、
+`com.dragon.read` 是否可见（版本号）、LSPosed 管理器是否可见、配置文件大小与可读性、日志实际路径、以及
+`TxtOutput.describePlan()` 给出的落地计划。宿主进程里的 hook 是否生效无法跨进程查询，需看 logcat。
+
 ## 4. 构建 / 验证
 
 ```powershell
 $env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
 .\gradlew.bat :app:assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
 .\gradlew.bat :app:assembleRelease      # app/build/outputs/apk/release/app-release-unsigned.apk
-.\gradlew.bat :app:testDebugUnitTest    # 17 项全绿（PortTest 8 + PrefsContractTest 5 + ThreadSafety 3 + 模板 1）
+.\gradlew.bat :app:testDebugUnitTest    # 20 项全绿（PortTest 8 + Prefs 5 + ThreadSafety 3 + TxtOutput 3 + 模板 1）
 .\gradlew.bat :app:lintDebug            # 0 error
 ```
 
 ## 5. 安装与使用
 
 1. 安装 APK → LSPosed 启用模块（作用域已由 `xposedscope` 预置 `com.dragon.read`）。
-2. 打开 FqFetch 设置页按需调整 → 强制停止番茄（或重启手机）。
+2. 打开 FqFetch 设置页按需调整（顺便看一眼「环境自检」）→ 强制停止番茄（或重启手机）。
 3. 打开任意一本书的阅读页 → 右上出现圆环悬浮窗（默认贴右、纵向 35%）→ 单击导出。
 4. 校验：
 
 ```powershell
-adb logcat -s Xposed | Select-String FqFetch           # 加载 + 配置行 + 已 Hook + 悬浮窗已注入
-adb shell tail -n 50 /sdcard/Download/FqFetch/TXT/_fqfetch_debug.log
-adb shell head -c 200 /sdcard/Download/FqFetch/TXT/*.txt
+adb logcat -s Xposed | Select-String FqFetch
+# 期望依次出现：加载 com.dragon.read / 配置 batch=… / 已 Hook ReaderActivity#onResume / 悬浮窗已注入 / 输出目标: …
+adb shell tail -n 50 /sdcard/Android/data/com.dragon.read/files/FqFetch/_fqfetch_debug.log
+adb shell ls -l /sdcard/Download/FqFetch/TXT/        # API 29+ 走 MediaStore 时的落地位置
 ```
 
 ## 6. 输出目录
 
 设置项里的自定义目录优先（探测可写后使用）；留空或不可写则按下列顺序探测：
 
-| 顺序 | 路径 |
-| --- | --- |
-| 1 | `/storage/emulated/0/Download/FqFetch/TXT` |
-| 2 | `Environment.getExternalStoragePublicDirectory(DOWNLOADS)/FqFetch/TXT` |
-| 3 | `/sdcard/Android/data/com.dragon.read/files/FqFetch/TXT` |
-| 4 | `/data/data/com.dragon.read/files/FqFetch/TXT` |
-| 5 | `/data/local/tmp/FqFetch/TXT` |
+只能靠 logcat 判定的部分：
 
-探测方式：`mkdirs()` + 实写 `.fqfetch_probe` 后删除。写文件权限随宿主进程，模块自身不需要存储权限。
+```powershell
+adb logcat -c; adb shell am force-stop com.dragon.read
+# 打开番茄进阅读页后再看：
+adb logcat -s Xposed | Select-String 'FqFetch|LSPosed'
+```
+
+- 出现 `加载 com.dragon.read` → 模块被注入；没有 → 作用域 / 激活 / root 三者有一个没成。
+- 有 `已 Hook ReaderActivity#onResume（n 处）` 但无 `悬浮窗已注入` → 注入失败，看附近的 `注入悬浮窗失败: …` 原因。
+- 有 `批量接口可用=false` → 宿主版本改名，按 `Hosts.NAME_*` 更新；单章兜底仍能出全本。
 
 ## 7. 常见失败分支
 
@@ -132,4 +145,13 @@ adb shell head -c 200 /sdcard/Download/FqFetch/TXT/*.txt
 | 改了设置宿主没反应 | logcat `配置 batch=…` 是否新值 | 确认模块 prefs 可读；必要时强制停止宿主 |
 | `未获取到 ReaderClient` | 阅读页字段 `K` 改名 | 换字段名或用 getter（`Ref.read`） |
 | `批量取回 0 章` | `批量接口可用=false` | 更新 `Hosts.NAME_CHAPTER_REQ` / `NAME_BATCH_API_IMPL` / `NAME_BATCH_REQ` |
-| Download 写入被拒 | 分区存储 | 自动回退宿主私有目录，或在设置页指定目录 |
+| Download 写入被拒 | 分区存储 | v2.3 起自动走 MediaStore；也可在设置页指定目录 |
+
+## 10. 变更记录
+
+| 版本 | 内容 |
+| --- | --- |
+| 2.0 | BeanShell 脚本移植为 LSPosed 模块（按钮 + 横向进度条） |
+| 2.1 | 设置页改 M3 Expressive；9 项设置经 XSharedPreferences 生效；按钮/进度条换成圆形悬浮窗 |
+| 2.2 | 修 `Animators may only be run on Looper threads`（三层转主线程）；新增 `ThreadSafetyContractTest`；中断不再误报完成 |
+| 2.3 | Android 12 兼容：`xposedminversion`/`minApiVersion` 93→82；补 `<queries>` 包可见性；新增 `TxtOutput`（MediaStore 落公共下载）；`values-v31` SplashScreen；显式 `setDecorFitsSystemWindows(false)`；日志改宿主外部私有目录；设置页新增「环境自检」 |

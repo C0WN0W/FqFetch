@@ -101,10 +101,45 @@ final class Cfg {
     static synchronized File logFile() {
         File f = logFile;
         if (f == null) {
-            f = new File(outDir(), LOG_NAME);
+            f = new File(logDir(), LOG_NAME);
             logFile = f;
         }
         return f;
+    }
+
+    /**
+     * 日志目录优先放宿主的外部私有目录：Android 10+ 分区存储下公共 Download 往往不可写，
+     * 而 {@code /sdcard/Android/data/<host>/files} 永远可写，也方便 adb pull。
+     */
+    private static File logDir() {
+        Context c = L.app();
+        if (c != null) {
+            try {
+                File ext = c.getExternalFilesDir(null);
+                if (ext != null) {
+                    File d = new File(ext, DIR_NAME);
+                    if (writable(d)) {
+                        return d;
+                    }
+                }
+            } catch (Throwable ignored) {
+                // ignore
+            }
+            try {
+                File d = new File(c.getFilesDir(), DIR_NAME);
+                if (writable(d)) {
+                    return d;
+                }
+            } catch (Throwable ignored) {
+                // ignore
+            }
+        }
+        return outDir();
+    }
+
+    /** 目录存在且真的能写文件才算通过。 */
+    static boolean writable(File dir) {
+        return probe(dir);
     }
 
     /** 目录存在且真的能写文件才算通过。 */
