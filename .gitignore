@@ -47,10 +47,9 @@ Thumbs.db
 # 本地配置
 local.properties
 
-# 临时测试脚本
+# BSH测试脚本
 script.java
-f1.xml
-f2.xml
-f3.xml
+FqStoryFetch.java
+
 # release目录产物
 app/release/
