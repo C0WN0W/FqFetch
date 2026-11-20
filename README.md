@@ -9,24 +9,23 @@
 app/src/main/java/com/cownow/fqfetch/
 ├── HookEntry.java      LSPosed 入口（assets/xposed_init 指定）；hook ReaderActivity#onResume/onDestroy
 ├── Hosts.java          宿主类解析与调用（fu8.a$a、ChapterOriginalContentHelper、BatchFullRequest …）
-├── FqFetchTask.java    主体流程：组批 → merge 并发 → 解密 → 按序写盘 → 驱动悬浮窗进度
+├── FqFetchTask.java    主体流程：组批 → merge 并发 → 解密 → 按序写盘 → 驱动悬浮窗进度（工作线程）
 ├── FloatingPanel.java  悬浮窗容器：拖动 / 吸附 / 位置记忆 / 长按隐藏 / 点击导出 / 状态机
 ├── RingProgressView.java  自绘圆环：轨道 + 进度弧 + 呼吸进度头 + 百分比 / TXT / 对勾 / 感叹号
-├── ReaderUi.java       每 Activity 一个悬浮窗（WeakHashMap），转发进度/完成/出错
+├── ReaderUi.java       每 Activity 一个悬浮窗（WeakHashMap），转发进度/完成/出错并转主线程
 ├── FloatPos.java       悬浮窗位置比例（存在宿主 prefs）
 ├── Prefs.java          设置项：默认值/范围/模块侧写入/宿主侧 XSharedPreferences 读取
 ├── Ref.java            反射工具（rfGet / rfSet / rfStaticField / rfStaticMethod）
 ├── D.java              errText / safeName / stripTitle / toPlain
 ├── L.java              logcat + 文件日志（可关）+ 主线程 Toast（对应脚本 log / dlog / toast）
-└── Cfg.java            输出目录探测（自定义目录优先）+ 日志路径
+├── Cfg.java            输出目录探测（自定义目录优先）+ 日志路径
+└── MainActivity.java   设置页（M3 Expressive）
 
-app/src/main/java/com/cownow/fqfetch/MainActivity.java   设置页（M3 Expressive）
-app/src/main/res/layout/activity_main.xml                设置页布局
-app/src/main/res/values/{themes,strings,arrays}.xml
+app/src/main/res/layout/activity_main.xml   设置页布局
 app/src/main/assets/xposed_init
 app/src/main/resources/META-INF/xposed/{module.prop,scope.list,java_init.list}
 app/src/main/keepRules/rules.keep
-app/src/test/java/com/cownow/fqfetch/{PortTest,PrefsContractTest}.java   JVM 回归测试
+app/src/test/java/com/cownow/fqfetch/{PortTest,PrefsContractTest,ThreadSafetyContractTest}.java
 ```
 
 ## 2. 阅读页悬浮窗
@@ -89,7 +88,7 @@ app/src/test/java/com/cownow/fqfetch/{PortTest,PrefsContractTest}.java   JVM 回
 $env:JAVA_HOME="C:\Program Files\Android\Android Studio\jbr"
 .\gradlew.bat :app:assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
 .\gradlew.bat :app:assembleRelease      # app/build/outputs/apk/release/app-release-unsigned.apk
-.\gradlew.bat :app:testDebugUnitTest    # 14 项全绿（PortTest 8 + PrefsContractTest 5 + 模板 1）
+.\gradlew.bat :app:testDebugUnitTest    # 17 项全绿（PortTest 8 + PrefsContractTest 5 + ThreadSafety 3 + 模板 1）
 .\gradlew.bat :app:lintDebug            # 0 error
 ```
 
@@ -124,10 +123,11 @@ adb shell head -c 200 /sdcard/Download/FqFetch/TXT/*.txt
 
 | 现象 | 定位 | 处理 |
 | --- | --- | --- |
-| 悬浮窗不出现 | logcat 无 `悬浮窗已注入` | 无 `已 Hook ReaderActivity#onResume` → 改 `Hosts.NAME_READER_ACTIVITY`；decorView 非 FrameLayout 会在日志里写明 |
+| 点悬浮窗后 Toast `Animators may only be run on Looper threads` | v2.1 线程 bug，v2.2 已修 | 升级 v2.2；若复现，检查三处主线程守卫是否被改掉（`ThreadSafetyContractTest` 会报） |
+| 悬浮窗不出现 | logcat 无 `悬浮窗已注入` | 无 `已 Hook ReaderActivity#onResume` → 改 `Hosts.NAME_READER_ACTIVITY`；decorView 非 FrameLayout 会写日志 |
 | 悬浮窗被误触隐藏 | 长按触发 | 退出重进阅读页即恢复 |
 | 悬浮窗位置跑到屏幕外 | 换分辨率/旋转后 | 已在 `onLayoutChange` 里钳制回边界；位置存于宿主 prefs `fqfetch_ui`，清数据即回默认 |
-| 圆环进度不动 | 宿主批量接口不可用 | 看日志 `批量接口可用=false`，走单章兜底仍会推进度 |
+| 圆环进度不动 | 宿主批量接口不可用 | 看日志 `批量接口可用=false`，单章兜底仍会推进度 |
 | 设置页打不开 / 主题崩 | `Theme.Material3Expressive.*` 由 material 1.14 提供 | 确认依赖未降级 |
 | 改了设置宿主没反应 | logcat `配置 batch=…` 是否新值 | 确认模块 prefs 可读；必要时强制停止宿主 |
 | `未获取到 ReaderClient` | 阅读页字段 `K` 改名 | 换字段名或用 getter（`Ref.read`） |

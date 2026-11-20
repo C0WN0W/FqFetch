@@ -12,8 +12,8 @@ android {
         applicationId = "com.cownow.fqfetch"
         minSdk = 28
         targetSdk = 37
-        versionCode = 2
-        versionName = "2.1"
+        versionCode = 3
+        versionName = "2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

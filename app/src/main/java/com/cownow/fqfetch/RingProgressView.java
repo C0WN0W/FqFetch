@@ -8,6 +8,7 @@ import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Typeface;
+import android.os.Looper;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
 
@@ -49,13 +50,26 @@ final class RingProgressView extends View {
         paint.setStrokeCap(Paint.Cap.ROUND);
     }
 
-    // ---------------- 状态 ----------------
+    // ---------------- 状态（任意线程可调，内部转主线程） ----------------
 
-    void setMode(int mode) {
-        if (this.mode == mode) {
+    /**
+     * ValueAnimator 只能在有 Looper 的线程 start，否则抛
+     * {@code AndroidRuntimeException: Animators may only be run on Looper threads}；
+     * 下载进度来自工作线程，所以这里统一 post 回主线程。
+     */
+    private boolean onMainThread() {
+        return Looper.myLooper() == Looper.getMainLooper();
+    }
+
+    void setMode(final int newMode) {
+        if (!onMainThread()) {
+            post(() -> setMode(newMode));
             return;
         }
-        this.mode = mode;
+        if (mode == newMode) {
+            return;
+        }
+        mode = newMode;
         if (mode == MODE_RUNNING) {
             startPulse();
         } else {
@@ -64,7 +78,11 @@ final class RingProgressView extends View {
         invalidate();
     }
 
-    void setLabel(String text) {
+    void setLabel(final String text) {
+        if (!onMainThread()) {
+            post(() -> setLabel(text));
+            return;
+        }
         String t = text == null ? "" : text;
         if (!t.equals(label)) {
             label = t;
@@ -72,7 +90,11 @@ final class RingProgressView extends View {
         }
     }
 
-    void setProgress(float value, boolean animate) {
+    void setProgress(final float value, final boolean animate) {
+        if (!onMainThread()) {
+            post(() -> setProgress(value, animate));
+            return;
+        }
         float target = Math.max(0f, Math.min(1f, value));
         if (progressAnim != null) {
             progressAnim.cancel();

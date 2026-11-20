@@ -58,6 +58,7 @@ final class FloatingPanel {
     private float downY;
     private boolean dragging;
     private boolean longPressed;
+    private volatile boolean destroyed;
 
     private ValueAnimator snapAnim;
 
@@ -129,6 +130,11 @@ final class FloatingPanel {
             };
 
     void destroy() {
+        if (!onUiThread()) {
+            main.post(this::destroy);
+            return;
+        }
+        destroyed = true;
         main.removeCallbacks(longPressTask);
         main.removeCallbacks(resetTask);
         cancelSnap();
@@ -141,10 +147,30 @@ final class FloatingPanel {
         }
     }
 
-    // ---------------- 对外状态 ----------------
+    // ---------------- 对外状态（任意线程可调） ----------------
+
+    /**
+     * 下载进度来自 {@code FqFetchTask} 的工作线程，而 ValueAnimator 只能在有 Looper 的线程启动，
+     * 所以这里统一转主线程再碰视图。
+     */
+    private boolean onUiThread() {
+        return Looper.myLooper() == Looper.getMainLooper();
+    }
+
+    /** 面板已随 Activity 销毁：丢弃排队中的进度更新，别再碰视图。 */
+    private boolean gone() {
+        return destroyed;
+    }
 
     /** 下载中：done/total 驱动圆环与百分比。 */
-    void showRunning(int done, int total) {
+    void showRunning(final int done, final int total) {
+        if (!onUiThread()) {
+            main.post(() -> showRunning(done, total));
+            return;
+        }
+        if (gone()) {
+            return;
+        }
         main.removeCallbacks(resetTask);
         ring.setMode(RingProgressView.MODE_RUNNING);
         float p = total > 0 ? (float) done / (float) total : 0f;
@@ -153,7 +179,14 @@ final class FloatingPanel {
     }
 
     /** 完成：全绿对勾；有失败章节则转成红圈感叹号。停留后回到 TXT。 */
-    void showDone(int ok, int fail) {
+    void showDone(final int ok, final int fail) {
+        if (!onUiThread()) {
+            main.post(() -> showDone(ok, fail));
+            return;
+        }
+        if (gone()) {
+            return;
+        }
         main.removeCallbacks(resetTask);
         ring.setProgress(1f, true);
         if (fail > 0) {
@@ -168,6 +201,13 @@ final class FloatingPanel {
 
     /** 出错：红圈感叹号。 */
     void showError() {
+        if (!onUiThread()) {
+            main.post(this::showError);
+            return;
+        }
+        if (gone()) {
+            return;
+        }
         main.removeCallbacks(resetTask);
         ring.setMode(RingProgressView.MODE_ERROR);
         ring.setLabel("!");
@@ -175,6 +215,13 @@ final class FloatingPanel {
     }
 
     void toIdle() {
+        if (!onUiThread()) {
+            main.post(this::toIdle);
+            return;
+        }
+        if (gone()) {
+            return;
+        }
         main.removeCallbacks(resetTask);
         ring.setMode(RingProgressView.MODE_IDLE);
         ring.setProgress(0f, false);
