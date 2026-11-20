@@ -94,7 +94,7 @@ final class FloatingPanel {
         @Override
         public boolean performClick() {
             super.performClick();
-            FqFetchTask.start(activity, loader);
+            Tasks.start(activity, loader);
             return true;
         }
     }

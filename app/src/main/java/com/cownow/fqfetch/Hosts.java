@@ -51,6 +51,18 @@ final class Hosts {
     };
     static final String NAME_RX_OBSERVABLE = "io.reactivex.Observable";
 
+    // ---------------- 短篇（UGC 故事） ----------------
+
+    /** 短篇流页面：只有短篇才会创建它，hook 到就等于「当前页是短篇」。 */
+    static final String[] NAME_STORY_FEEDS = {
+            "com.dragon.read.story.impl.feeds.UgcStoryFeedsFragment",
+            "com.dragon.read.story.impl.feeds.KmpStoryFeedsFragment",
+    };
+    /** 短篇官方取数 API 宿主类：getStoryClientCurrentPostData(Activity)。 */
+    static final String[] NAME_STORY_IMPL = {
+            "com.dragon.read.component.biz.impl.NsStoryImpl",
+    };
+
     final ClassLoader cl;
 
     Class<?> contentHelperCls;

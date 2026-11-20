@@ -18,7 +18,10 @@ import java.util.List;
 final class Cfg {
 
     static final String DIR_NAME = "FqFetch";
+    /** 长篇（章节体系）子目录。 */
     static final String SUB_DIR = "TXT";
+    /** 短篇（UGC 故事）子目录。 */
+    static final String SUB_DIR_STORY = "Story";
     static final String LOG_NAME = "_fqfetch_debug.log";
 
     private static volatile File activeOutDir;
@@ -27,17 +30,24 @@ final class Cfg {
     private Cfg() {
     }
 
-    /** 候选输出目录，按优先级排列。 */
+    /** 候选输出目录（长篇口径）。 */
     static List<File> candidates() {
+        return candidates(SUB_DIR);
+    }
+
+    /** 候选输出目录，按优先级排列。 */
+    static List<File> candidates(String subDir) {
         List<File> list = new ArrayList<>();
+        String sub = subDir == null || subDir.isEmpty() ? SUB_DIR : subDir;
         try {
-            list.add(new File(Environment.getExternalStorageDirectory(), "Download/" + DIR_NAME + "/" + SUB_DIR));
+            list.add(new File(Environment.getExternalStorageDirectory(),
+                    "Download/" + DIR_NAME + "/" + sub));
         } catch (Throwable ignored) {
             // ignore
         }
         try {
             File dl = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            list.add(new File(dl, DIR_NAME + "/" + SUB_DIR));
+            list.add(new File(dl, DIR_NAME + "/" + sub));
         } catch (Throwable ignored) {
             // ignore
         }
@@ -46,18 +56,18 @@ final class Cfg {
             try {
                 File ext = c.getExternalFilesDir(null);
                 if (ext != null) {
-                    list.add(new File(ext, DIR_NAME + "/" + SUB_DIR));
+                    list.add(new File(ext, DIR_NAME + "/" + sub));
                 }
             } catch (Throwable ignored) {
                 // ignore
             }
             try {
-                list.add(new File(c.getFilesDir(), DIR_NAME + "/" + SUB_DIR));
+                list.add(new File(c.getFilesDir(), DIR_NAME + "/" + sub));
             } catch (Throwable ignored) {
                 // ignore
             }
         }
-        list.add(new File("/data/local/tmp/" + DIR_NAME + "/" + SUB_DIR));
+        list.add(new File("/data/local/tmp/" + DIR_NAME + "/" + sub));
         return list;
     }
 
